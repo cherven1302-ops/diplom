@@ -19,10 +19,6 @@ import json
 import os
 from collections import defaultdict
 
-# Selenium для ukragroconsult
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-
 app = Flask(__name__, static_folder='.')
 CORS(app)
 
@@ -1208,4 +1204,5 @@ if __name__ == '__main__':
     print("  - info_data.json (ukragroconsult)")
     print("=" * 60 + "\n")
     
-    app.run(debug=True, host='0.0.0.0', port=5000, use_reloader=False)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(debug=False, host='0.0.0.0', port=port, use_reloader=False)
