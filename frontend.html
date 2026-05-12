@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Зернова торгова платформа</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #2c5f2d;
+            margin-bottom: 30px;
+            font-size: 32px;
+            font-weight: 600;
+        }
+        
+        .block {
+            background: white;
+            border-radius: 8px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .block h2 {
+            color: #2c5f2d;
+            margin-bottom: 20px;
+            font-size: 24px;
+            border-bottom: 2px solid #2c5f2d;
+            padding-bottom: 10px;
+        }
+        
+        .block h3 {
+            color: #2c5f2d;
+            margin: 20px 0 15px 0;
+            font-size: 18px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            font-family: inherit;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: #2c5f2d;
+            box-shadow: 0 0 0 2px rgba(44,95,45,0.1);
+        }
+        
+        button {
+            background: #2c5f2d;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            margin-top: 10px;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #1e4620;
+        }
+        
+        button:disabled {
+            background: #999;
+            cursor: not-allowed;
+        }
+        
+        .map {
+            width: 100%;
+            height: 300px;
+            margin-top: 10px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+        
+        .vehicle-item, .user-offer-item {
+            background: #f9f9f9;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            border-left: 4px solid #2c5f2d;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #f0f8f0 0%, #e8f5e9 100%);
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        
+        .stat-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #2c5f2d;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            font-size: 14px;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        th {
+            background: #2c5f2d;
+            color: white;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+        }
+        
+        tr:hover {
+            background: #f5f5f5;
+        }
+        
+        .profit-positive {
+            color: #2c5f2d;
+            font-weight: bold;
+        }
+        
+        .profit-negative {
+            color: #c23030;
+            font-weight: bold;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .info-text {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            border-left: 4px solid #ffc107;
+        }
+        
+        .remove-btn {
+            background: #c23030;
+            padding: 6px 12px;
+            font-size: 14px;
+            margin: 0;
+        }
+        
+        .remove-btn:hover {
+            background: #a02020;
+        }
+        
+        .coords-display {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f0f8f0;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #555;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+        
+        .modal-content {
+            background: white;
+            margin: 50px auto;
+            padding: 30px;
+            border-radius: 8px;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .calculate-btn {
+            background: #1e4620;
+            font-size: 18px;
+            padding: 15px 30px;
+            width: 100%;
+            margin-top: 20px;
+        }
+        
+        .user-offer-row {
+            background: #e8f5e9 !important;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Зернова торгова платформа</h1>
+        
+        <!-- БЛОК 1: Введення даних -->
+        <div class="block">
+            <h2>Блок 1: Ваші дані</h2>
+            
+            <div class="form-group">
+                <label for="culture">Тип товару:</label>
+                <select id="culture">
+                    <option value="">Оберіть культуру</option>
+                    <option value="Соняшник">Соняшник</option>
+                    <option value="Кукурудза">Кукурудза</option>
+                    <option value="Пшениця">Пшениця</option>
+                    <option value="Соя">Соя</option>
+                    <option value="Ячмінь">Ячмінь</option>
+                    <option value="Ріпак">Ріпак</option>
+                    <option value="Горох">Горох</option>
+                    <option value="Овес">Овес</option>
+                    <option value="Гречка">Гречка</option>
+                    <option value="Цукровий буряк">Цукровий буряк</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="volume">Кількість товару (тонн):</label>
+                <input type="number" id="volume" min="0" step="0.1" placeholder="Введіть кількість">
+            </div>
+            
+            <div class="form-group">
+                <label for="location">Місцезнаходження товару:</label>
+                <input type="text" id="location" placeholder="Введіть адресу або клікніть на карту">
+                <div id="map" class="map"></div>
+                <div class="coords-display">
+                    Координати: <span id="coords">Не вибрано</span>
+                </div>
+            </div>
+            
+            <h3>Ваші машини:</h3>
+            <div id="vehicles-list">
+                <p class="empty-state">Машини не додані</p>
+            </div>
+            <button onclick="addVehicle()">Додати машину</button>
+            
+            <h3>Ваші пропозиції на покупку:</h3>
+            <div id="user-offers-list">
+                <p class="empty-state">Пропозиції не додані</p>
+            </div>
+            <button onclick="showOfferForm()">Додати пропозицію</button>
+            
+            <button class="calculate-btn" onclick="calculate()">
+                Розрахувати пропозиції
+            </button>
+        </div>
+        
+        <!-- БЛОК 2: Статистика -->
+        <div class="block">
+            <h2>Блок 2: Статистика</h2>
+            <div id="statistics-content">
+                <p class="loading">Оберіть культуру та натисніть "Розрахувати пропозиції"</p>
+            </div>
+        </div>
+        
+        <!-- БЛОК 3: Пропозиції -->
+        <div class="block">
+            <h2>Блок 3: Пропозиції на покупку</h2>
+            <div id="proposals-content">
+                <p class="loading">Оберіть культуру та натисніть "Розрахувати пропозиції"</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Модальне вікно для додавання машини -->
+    <div id="vehicle-modal" class="modal">
+        <div class="modal-content">
+            <h2>Додати машину</h2>
+            <div class="form-group">
+                <label>Вантажопідйомність (тонн):</label>
+                <input type="number" id="vehicle-capacity" min="0" step="0.1" placeholder="Наприклад: 20">
+            </div>
+            <div class="form-group">
+                <label>Ставка за км (грн):</label>
+                <input type="number" id="vehicle-rate" min="0" step="0.1" placeholder="Наприклад: 15">
+            </div>
+            <button onclick="saveVehicle()">Зберегти машину</button>
+            <button onclick="cancelVehicle()" style="background: #999;">Скасувати</button>
+        </div>
+    </div>
+    
+    <!-- Модальне вікно для додавання пропозиції -->
+    <div id="offer-modal" class="modal">
+        <div class="modal-content">
+            <h2>Нова пропозиція на покупку</h2>
+            <div class="form-group">
+                <label>Ціна за тонну (грн):</label>
+                <input type="number" id="offer-price" min="0" placeholder="Введіть ціну">
+            </div>
+            <div class="form-group">
+                <label>Кількість товару (тонн):</label>
+                <input type="number" id="offer-volume" min="0" step="0.1" placeholder="Введіть кількість">
+            </div>
+            <div class="form-group">
+                <label>Місцезнаходження:</label>
+                <input type="text" id="offer-location" placeholder="Введіть адресу">
+                <div id="offer-map" class="map"></div>
+                <div class="coords-display">
+                    Координати: <span id="offer-coords">Не вибрано</span>
+                </div>
+            </div>
+            <button onclick="saveOffer()">Зберегти пропозицію</button>
+            <button onclick="cancelOffer()" style="background: #999;">Скасувати</button>
+        </div>
+    </div>
+    
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const API_URL = 'http://localhost:5000';
+        
+        let map, marker;
+        let offerMap, offerMarker;
+        let userLat = null, userLon = null;
+        let offerLat = null, offerLon = null;
+        let vehicles = [];
+        let userOffers = [];
+        
+        // Ініціалізація карти
+        document.addEventListener('DOMContentLoaded', function() {
+            map = L.map('map').setView([50.4501, 30.5234], 6);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: 'OpenStreetMap'
+            }).addTo(map);
+            
+            map.on('click', function(e) {
+                userLat = e.latlng.lat;
+                userLon = e.latlng.lng;
+                
+                if (marker) {
+                    map.removeLayer(marker);
+                }
+                
+                marker = L.marker([userLat, userLon]).addTo(map);
+                document.getElementById('coords').textContent = 
+                    userLat.toFixed(6) + ', ' + userLon.toFixed(6);
+                
+                saveData();
+            });
+            
+            loadSavedData();
+        });
+        
+        function showOfferForm() {
+            const culture = document.getElementById('culture').value;
+            if (!culture) {
+                alert('Спочатку оберіть тип товару');
+                return;
+            }
+            
+            document.getElementById('offer-modal').style.display = 'block';
+            
+            setTimeout(() => {
+                if (!offerMap) {
+                    offerMap = L.map('offer-map').setView([50.4501, 30.5234], 6);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: 'OpenStreetMap'
+                    }).addTo(offerMap);
+                    
+                    offerMap.on('click', function(e) {
+                        offerLat = e.latlng.lat;
+                        offerLon = e.latlng.lng;
+                        
+                        if (offerMarker) {
+                            offerMap.removeLayer(offerMarker);
+                        }
+                        
+                        offerMarker = L.marker([offerLat, offerLon]).addTo(offerMap);
+                        document.getElementById('offer-coords').textContent = 
+                            offerLat.toFixed(6) + ', ' + offerLon.toFixed(6);
+                    });
+                }
+            }, 100);
+        }
+        
+        function cancelOffer() {
+            document.getElementById('offer-modal').style.display = 'none';
+        }
+        
+        async function saveOffer() {
+            const culture = document.getElementById('culture').value;
+            const price = parseFloat(document.getElementById('offer-price').value);
+            const volume = parseFloat(document.getElementById('offer-volume').value);
+            const location = document.getElementById('offer-location').value;
+            
+            if (!price || !volume || !offerLat || !offerLon) {
+                alert('Заповніть всі поля та оберіть локацію на карті');
+                return;
+            }
+            
+            const offer = {
+                culture: culture,
+                price: price,
+                volume: volume,
+                location: location,
+                lat: offerLat,
+                lon: offerLon
+            };
+            
+            const response = await fetch(`${API_URL}/api/add_offer`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(offer)
+            });
+            
+            if (response.ok) {
+                userOffers.push(offer);
+                saveData();
+                renderUserOffers();
+                cancelOffer();
+                
+                document.getElementById('offer-price').value = '';
+                document.getElementById('offer-volume').value = '';
+                document.getElementById('offer-location').value = '';
+                document.getElementById('offer-coords').textContent = 'Не вибрано';
+                
+                alert('Пропозицію додано!');
+                
+                // Автоматичний перерахунок
+                autoRecalculate();
+            }
+        }
+        
+        function showVehicleForm() {
+            document.getElementById('vehicle-modal').style.display = 'block';
+        }
+        
+        function cancelVehicle() {
+            document.getElementById('vehicle-modal').style.display = 'none';
+        }
+        
+        function saveVehicle() {
+            const capacity = parseFloat(document.getElementById('vehicle-capacity').value);
+            const rate = parseFloat(document.getElementById('vehicle-rate').value);
+            
+            if (!capacity || !rate) {
+                alert('Заповніть всі поля');
+                return;
+            }
+            
+            vehicles.push({ capacity, rate });
+            saveData();
+            renderVehicles();
+            cancelVehicle();
+            
+            document.getElementById('vehicle-capacity').value = '';
+            document.getElementById('vehicle-rate').value = '';
+            
+            // Автоматичний перерахунок
+            autoRecalculate();
+        }
+        
+        function addVehicle() {
+            showVehicleForm();
+        }
+        
+        function removeVehicle(index) {
+            vehicles.splice(index, 1);
+            saveData();
+            renderVehicles();
+        }
+        
+        function removeUserOffer(index) {
+            userOffers.splice(index, 1);
+            saveData();
+            renderUserOffers();
+        }
+        
+        function renderVehicles() {
+            const list = document.getElementById('vehicles-list');
+            if (vehicles.length === 0) {
+                list.innerHTML = '<p class="empty-state">Машини не додані</p>';
+                return;
+            }
+            
+            list.innerHTML = vehicles.map((v, i) => `
+                <div class="vehicle-item">
+                    <span>Машина ${i+1}: ${v.capacity} т, ${v.rate} грн/км</span>
+                    <button class="remove-btn" onclick="removeVehicle(${i})">Видалити</button>
+                </div>
+            `).join('');
+        }
+        
+        function renderUserOffers() {
+            const list = document.getElementById('user-offers-list');
+            if (userOffers.length === 0) {
+                list.innerHTML = '<p class="empty-state">Пропозиції не додані</p>';
+                return;
+            }
+            
+            list.innerHTML = userOffers.map((o, i) => `
+                <div class="user-offer-item">
+                    <span>${o.culture}: ${o.price} грн/т, ${o.volume} т, ${o.location}</span>
+                    <button class="remove-btn" onclick="removeUserOffer(${i})">Видалити</button>
+                </div>
+            `).join('');
+        }
+        
+        function saveData() {
+            localStorage.setItem('culture', document.getElementById('culture').value);
+            localStorage.setItem('volume', document.getElementById('volume').value);
+            localStorage.setItem('location', document.getElementById('location').value);
+            localStorage.setItem('userLat', userLat);
+            localStorage.setItem('userLon', userLon);
+            localStorage.setItem('vehicles', JSON.stringify(vehicles));
+            localStorage.setItem('userOffers', JSON.stringify(userOffers));
+        }
+        
+        function loadSavedData() {
+            document.getElementById('culture').value = localStorage.getItem('culture') || '';
+            document.getElementById('volume').value = localStorage.getItem('volume') || '';
+            document.getElementById('location').value = localStorage.getItem('location') || '';
+            
+            const savedLat = localStorage.getItem('userLat');
+            const savedLon = localStorage.getItem('userLon');
+            
+            if (savedLat && savedLon && savedLat !== 'null' && savedLon !== 'null') {
+                userLat = parseFloat(savedLat);
+                userLon = parseFloat(savedLon);
+                marker = L.marker([userLat, userLon]).addTo(map);
+                map.setView([userLat, userLon], 10);
+                document.getElementById('coords').textContent = 
+                    userLat.toFixed(6) + ', ' + userLon.toFixed(6);
+            }
+            
+            const savedVehicles = localStorage.getItem('vehicles');
+            if (savedVehicles) {
+                vehicles = JSON.parse(savedVehicles);
+                renderVehicles();
+            }
+            
+            const savedOffers = localStorage.getItem('userOffers');
+            if (savedOffers) {
+                userOffers = JSON.parse(savedOffers);
+                renderUserOffers();
+            }
+        }
+        
+        async function calculate() {
+            const culture = document.getElementById('culture').value;
+            const volume = parseFloat(document.getElementById('volume').value);
+            
+            if (!culture) {
+                alert('Оберіть тип товару');
+                return;
+            }
+            
+            if (!volume || volume <= 0) {
+                alert('Введіть кількість товару');
+                return;
+            }
+            
+            if (!userLat || !userLon) {
+                alert('Оберіть місцезнаходження товару на карті');
+                return;
+            }
+            
+            saveData();
+            
+            document.getElementById('statistics-content').innerHTML = '<p class="loading">Завантаження статистики...</p>';
+            document.getElementById('proposals-content').innerHTML = '<p class="loading">Обчислення пропозицій...</p>';
+            
+            // Статистика
+            try {
+                const statsResponse = await fetch(`${API_URL}/api/statistics?culture=${encodeURIComponent(culture)}`);
+                const stats = await statsResponse.json();
+                renderStatistics(stats);
+            } catch (e) {
+                document.getElementById('statistics-content').innerHTML = '<p class="loading">Помилка завантаження статистики</p>';
+            }
+            
+            // Пропозиції
+            try {
+                const calcResponse = await fetch(`${API_URL}/api/calculate`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        lat: userLat,
+                        lon: userLon,
+                        volume: volume,
+                        culture: culture,
+                        vehicles: vehicles
+                    })
+                });
+                
+                const calcData = await calcResponse.json();
+                renderProposals(calcData.proposals, calcData.user_offers);
+            } catch (e) {
+                document.getElementById('proposals-content').innerHTML = '<p class="loading">Помилка обчислення пропозицій</p>';
+            }
+        }
+        
+        function renderStatistics(stats) {
+            let html = `
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value">${stats.count}</div>
+                        <div class="stat-label">Пропозицій</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${stats.min} грн</div>
+                        <div class="stat-label">Мінімум</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${stats.max} грн</div>
+                        <div class="stat-label">Максимум</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${stats.avg} грн</div>
+                        <div class="stat-label">Середнє</div>
+                    </div>
+                </div>
+            `;
+            
+            if (stats.info && stats.info.prices && stats.info.prices.length > 0) {
+                html += `
+                    <div class="info-section" style="margin-top: 20px;">
+                        <h4>Дані з UkrAgroConsult:</h4>
+                        <div class="info-text">
+                            Мін: ${stats.info.min.toFixed(2)} грн | 
+                            Макс: ${stats.info.max.toFixed(2)} грн | 
+                            Середнє: ${stats.info.avg.toFixed(2)} грн
+                        </div>
+                `;
+                
+                // Таблиця з датами та цінами
+                if (stats.info.dates && stats.info.dates.length > 0) {
+                    html += `
+                        <table style="margin-top: 10px; width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th>Дата</th>
+                                    <th>Ціна (грн)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+                    
+                    for (let i = 0; i < Math.min(stats.info.dates.length, stats.info.prices.length); i++) {
+                        html += `
+                            <tr>
+                                <td>${stats.info.dates[i]}</td>
+                                <td>${stats.info.prices[i].toFixed(2)}</td>
+                            </tr>
+                        `;
+                    }
+                    
+                    html += `
+                            </tbody>
+                        </table>
+                    `;
+                }
+                
+                html += `</div>`;
+            }
+            
+            document.getElementById('statistics-content').innerHTML = html;
+        }
+        
+        function renderProposals(proposals, userProposals) {
+            let html = '';
+            
+            if (userProposals && userProposals.length > 0) {
+                html += '<h3>Ваші пропозиції:</h3>';
+                html += '<table><thead><tr>';
+                // Приховуємо дату і локацію для власних пропозицій
+                html += '<th>Контрагент</th><th>Культура</th><th>Обсяг</th>';
+                html += '<th>Ціна</th><th>Відстань (км)</th>';
+                html += '<th>Дохід (грн)</th><th>Логістика (грн)</th><th>Прибуток (грн)</th>';
+                html += '</tr></thead><tbody>';
+                
+                userProposals.forEach(p => {
+                    const profitClass = p.profit >= 0 ? 'profit-positive' : 'profit-negative';
+                    const income = p.income || 0;
+                    const logistics = p.logistics || 0;
+                    const logisticsText = logistics > 0 ? logistics.toFixed(2) : '(без логістики)';
+                    
+                    html += `<tr class="user-offer-row">`;
+                    html += `<td><strong>${p.contractor}</strong></td>`;
+                    html += `<td>${p.culture}</td>`;
+                    html += `<td>${p.volume}</td>`;
+                    html += `<td>${p.price}</td>`;
+                    html += `<td>${p.distance}</td>`;
+                    html += `<td>${income.toFixed(2)}</td>`;
+                    html += `<td>${logisticsText}</td>`;
+                    html += `<td class="${profitClass}">${p.profit}</td>`;
+                    html += `</tr>`;
+                });
+                
+                html += '</tbody></table>';
+                html += '<h3 style="margin-top: 30px;">Інші пропозиції:</h3>';
+            }
+            
+            if (!proposals || proposals.length === 0) {
+                html += '<p class="loading">Пропозиції не знайдені</p>';
+            } else {
+                html += '<table><thead><tr>';
+                html += '<th>Дата</th><th>Контрагент</th><th>Культура</th><th>Обсяг</th>';
+                html += '<th>Ціна</th><th>Локація</th><th>Відстань (км)</th>';
+                html += '<th>Дохід (грн)</th><th>Логістика (грн)</th><th>Прибуток (грн)</th><th>Джерело</th>';
+                html += '</tr></thead><tbody>';
+                
+                proposals.forEach(p => {
+                    const profitClass = p.profit >= 0 ? 'profit-positive' : 'profit-negative';
+                    const income = p.income || 0;
+                    const logistics = p.logistics || 0;
+                    const logisticsText = logistics > 0 ? logistics.toFixed(2) : '(без логістики)';
+                    
+                    html += `<tr>`;
+                    html += `<td>${p.date}</td>`;
+                    html += `<td>${p.contractor}</td>`;
+                    html += `<td>${p.culture}</td>`;
+                    html += `<td>${p.volume || '-'}</td>`;
+                    html += `<td>${p.price}</td>`;
+                    html += `<td>${p.location || '-'}</td>`;
+                    html += `<td>${p.distance}</td>`;
+                    html += `<td>${income.toFixed(2)}</td>`;
+                    html += `<td>${logisticsText}</td>`;
+                    html += `<td class="${profitClass}">${p.profit}</td>`;
+                    html += `<td><small>${p.source}</small></td>`;
+                    html += `</tr>`;
+                });
+                
+                html += '</tbody></table>';
+            }
+            
+            document.getElementById('proposals-content').innerHTML = html;
+        }
+        
+        // Автозбереження
+        document.getElementById('culture').addEventListener('change', function() {
+            saveData();
+            autoRecalculate();
+        });
+        document.getElementById('volume').addEventListener('input', function() {
+            saveData();
+            autoRecalculate();
+        });
+        document.getElementById('location').addEventListener('input', saveData);
+        
+        // Автоматичний перерахунок
+        function autoRecalculate() {
+            const culture = document.getElementById('culture').value;
+            const volume = parseFloat(document.getElementById('volume').value);
+            
+            // Якщо всі дані заповнені - автоматично рахуємо
+            if (culture && volume > 0 && userLat && userLon) {
+                calculate();
+            }
+        }
+    </script>
+</body>
+</html>
