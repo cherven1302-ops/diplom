@@ -1176,33 +1176,45 @@ def force_update():
 # ЗАПУСК
 # ============================================================================
 
-if __name__ == '__main__':
-    print("=" * 60)
-    print("ЗЕРНОВА ТОРГОВА ПЛАТФОРМА - БЕКЕНД (ВИПРАВЛЕНА ВЕРСІЯ)")
-    print("=" * 60)
-    
-    print("\nЗавантаження збережених даних...")
-    load_data_from_files()
-    
-    if not prop_data:
-        print("\nПочатковий парсинг...")
+# ============================================================================
+# ІНІЦІАЛІЗАЦІЯ ПРИ ЗАПУСКУ
+# ============================================================================
+
+print("=" * 60)
+print("ЗЕРНОВА ТОРГОВА ПЛАТФОРМА - БЕКЕНД")
+print("=" * 60)
+
+print("\nЗавантаження збережених даних...")
+load_data_from_files()
+
+if not prop_data:
+    print("\nПочатковий парсинг...")
+    try:
         parse_all_proposals()
-    
-    if not info_data:
-        try:
-            parse_ukragroconsult_selenium()
-        except Exception as e:
-            print(f"Ukragroconsult пропущено: {e}")
-    
+    except Exception as e:
+        print(f"Помилка парсингу: {e}")
+
+if not info_data:
+    try:
+        parse_ukragroconsult_selenium()
+    except Exception as e:
+        print(f"Ukragroconsult пропущено: {e}")
+
+# Фоновий парсинг тільки якщо запущено через python (не gunicorn)
+if __name__ == '__main__':
     start_background_parsing()
-    
-    print("\n" + "=" * 60)
-    print("Сервер запущено: http://localhost:5000")
-    print("Фронтенд: frontend.html")
-    print("Файли даних:")
-    print("  - prop_data.csv (пропозиції)")
-    print("  - info_data.json (ukragroconsult)")
-    print("=" * 60 + "\n")
-    
+
+print("\n" + "=" * 60)
+print("Сервер готовий")
+print("Файли даних:")
+print("  - prop_data.csv (пропозиції)")
+print("  - info_data.json (ukragroconsult)")
+print("=" * 60 + "\n")
+
+# ============================================================================
+# ЗАПУСК (тільки для локального тестування)
+# ============================================================================
+
+if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(debug=False, host='0.0.0.0', port=port, use_reloader=False)
