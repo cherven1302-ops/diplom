@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 Бекенд для зернової торгової платформи
-Flask API + парсинг даних + OSM геокодування та розрахунок відстаней
+Flask API + парсинг даних + OSM геокодування + PostgreSQL
 """
 
 from flask import Flask, render_template, jsonify, request, send_from_directory
@@ -17,6 +17,15 @@ import math
 import json
 import os
 from collections import defaultdict
+
+# PostgreSQL
+try:
+    from database import Database
+    USE_DATABASE = True
+    print("✓ Database модуль імпортовано")
+except ImportError:
+    USE_DATABASE = False
+    print("⚠️ Database модуль недоступний, використовую пам'ять")
 
 app = Flask(__name__, static_folder='.')
 CORS(app)
@@ -254,11 +263,42 @@ FALLBACK_DATA = [
 print("=" * 60)
 print("ІНІЦІАЛІЗАЦІЯ BACKEND")
 print("=" * 60)
-if not prop_data:
-    print("⚠️ Використовую ТЕСТОВІ ДАНІ (fallback)")
-    print(f"   Завантажено: {len(FALLBACK_DATA)} пропозицій")
-    prop_data = FALLBACK_DATA.copy()
-    last_update = datetime.now()
+
+# Спроба підключитися до БД
+db = None
+if USE_DATABASE and os.environ.get('DATABASE_URL'):
+    try:
+        db = Database()
+        if db.connect():
+            db.init_schema()
+            # Завантажити дані з БД
+            db_proposals = db.get_all_proposals()
+            if db_proposals:
+                prop_data = db_proposals
+                last_update = datetime.now()
+                print(f"✓ Завантажено з PostgreSQL: {len(prop_data)} пропозицій")
+            else:
+                print("⚠️ БД порожня, використовую ТЕСТОВІ ДАНІ")
+                prop_data = FALLBACK_DATA.copy()
+                last_update = datetime.now()
+                # Збережемо fallback дані в БД
+                db.save_proposals(prop_data)
+        else:
+            print("⚠️ Не вдалося підключитися до БД")
+            prop_data = FALLBACK_DATA.copy()
+            last_update = datetime.now()
+    except Exception as e:
+        print(f"⚠️ Помилка БД: {e}")
+        prop_data = FALLBACK_DATA.copy()
+        last_update = datetime.now()
+else:
+    # Fallback якщо немає БД
+    if not prop_data:
+        print("⚠️ Використовую ТЕСТОВІ ДАНІ (fallback)")
+        print(f"   Завантажено: {len(FALLBACK_DATA)} пропозицій")
+        prop_data = FALLBACK_DATA.copy()
+        last_update = datetime.now()
+
 print("=" * 60 + "\n")
 
 headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
@@ -1098,6 +1138,7 @@ def parse_all_proposals():
     print(f"\nВсього зібрано: {len(all_results)} пропозицій")
     print(f"Після видалення дублікатів: {len(unique_results)} пропозицій")
     
+    # Збереження в CSV (fallback)
     try:
         import csv
         with open('prop_data.csv', 'w', newline='', encoding='utf-8-sig') as f:
@@ -1106,9 +1147,17 @@ def parse_all_proposals():
                 writer = csv.DictWriter(f, fieldnames=fieldnames)
                 writer.writeheader()
                 writer.writerows(prop_data)
-        print("  Збережено у prop_data.csv")
+        print("  ✓ Збережено у prop_data.csv")
     except Exception as e:
-        print(f"  Помилка збереження: {e}")
+        print(f"  ✗ Помилка збереження CSV: {e}")
+    
+    # Збереження в PostgreSQL
+    if db:
+        try:
+            db.save_proposals(prop_data)
+            print("  ✓ Збережено в PostgreSQL")
+        except Exception as e:
+            print(f"  ✗ Помилка збереження в БД: {e}")
 
 
 def calculate_profit(offer, user_lat, user_lon, user_volume, vehicles):
