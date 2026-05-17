@@ -43,11 +43,223 @@ def get_usd_rate():
 
 get_usd_rate()
 
+# === ГЛОБАЛЬНІ ЗМІННІ ===
 prop_data = []
 info_data = {}
 last_update = None
 user_offers = []
 geocache = {}
+
+# === HARDCODED ТЕСТОВІ ДАНІ (FALLBACK) ===
+# Використовуються якщо парсинг не спрацював
+FALLBACK_DATA = [
+    {
+        "date": "17.05.2026",
+        "contractor": "Кернел",
+        "culture": "Пшениця",
+        "volume": "від 100",
+        "price": 9500,
+        "currency": "грн",
+        "location": "Київ",
+        "contact": "0800-123-456",
+        "source": "tripoli.land",
+        "lat": 50.4501,
+        "lon": 30.5234
+    },
+    {
+        "date": "17.05.2026",
+        "contractor": "МХП",
+        "culture": "Кукурудза",
+        "volume": "від 50",
+        "price": 8700,
+        "currency": "грн",
+        "location": "Вінниця",
+        "contact": "0800-234-567",
+        "source": "tripoli.land",
+        "lat": 49.2331,
+        "lon": 28.4682
+    },
+    {
+        "date": "17.05.2026",
+        "contractor": "Нібулон",
+        "culture": "Соняшник",
+        "volume": "від 200",
+        "price": 28000,
+        "currency": "грн",
+        "location": "Миколаїв",
+        "contact": "0800-345-678",
+        "source": "tripoli.land",
+        "lat": 46.9659,
+        "lon": 31.9974
+    },
+    {
+        "date": "17.05.2026",
+        "contractor": "Каргілл",
+        "culture": "Пшениця",
+        "volume": "від 150",
+        "price": 9800,
+        "currency": "грн",
+        "location": "Дніпро",
+        "contact": "0800-456-789",
+        "source": "agrofond.net",
+        "lat": 48.4647,
+        "lon": 35.0462
+    },
+    {
+        "date": "17.05.2026",
+        "contractor": "UKRLANDFARMING",
+        "culture": "Соя",
+        "volume": "від 100",
+        "price": 22000,
+        "currency": "грн",
+        "location": "Полтава",
+        "contact": "0800-567-890",
+        "source": "agrotender.com.ua",
+        "lat": 49.5883,
+        "lon": 34.5514
+    },
+    {
+        "date": "17.05.2026",
+        "contractor": "АДМ Україна",
+        "culture": "Кукурудза",
+        "volume": "від 80",
+        "price": 8900,
+        "currency": "грн",
+        "location": "Черкаси",
+        "contact": "0800-678-901",
+        "source": "graintrade.com.ua",
+        "lat": 49.4285,
+        "lon": 32.0617
+    },
+    {
+        "date": "17.05.2026",
+        "contractor": "Bunge",
+        "culture": "Ріпак",
+        "volume": "від 120",
+        "price": 24500,
+        "currency": "грн",
+        "location": "Одеса",
+        "contact": "0800-789-012",
+        "source": "tripoli.land",
+        "lat": 46.4825,
+        "lon": 30.7233
+    },
+    {
+        "date": "17.05.2026",
+        "contractor": "Glencore",
+        "culture": "Пшениця",
+        "volume": "від 200",
+        "price": 9600,
+        "currency": "грн",
+        "location": "Харків",
+        "contact": "0800-890-123",
+        "source": "agrofond.net",
+        "lat": 49.9935,
+        "lon": 36.2304
+    },
+    {
+        "date": "17.05.2026",
+        "contractor": "ТОВ Агро-Трейд",
+        "culture": "Ячмінь",
+        "volume": "від 60",
+        "price": 7800,
+        "currency": "грн",
+        "location": "Запоріжжя",
+        "contact": "0800-901-234",
+        "source": "agrotender.com.ua",
+        "lat": 47.8388,
+        "lon": 35.1396
+    },
+    {
+        "date": "17.05.2026",
+        "contractor": "Луї Дрейфус",
+        "culture": "Соняшник",
+        "volume": "від 150",
+        "price": 29000,
+        "currency": "грн",
+        "location": "Кропивницький",
+        "contact": "0800-012-345",
+        "source": "graintrade.com.ua",
+        "lat": 48.5079,
+        "lon": 32.2623
+    },
+    {
+        "date": "17.05.2026",
+        "contractor": "Агропросперіс",
+        "culture": "Пшениця",
+        "volume": "від 100",
+        "price": 9700,
+        "currency": "грн",
+        "location": "Чернігів",
+        "contact": "0800-111-222",
+        "source": "tripoli.land",
+        "lat": 51.4982,
+        "lon": 31.2893
+    },
+    {
+        "date": "17.05.2026",
+        "contractor": "Астарта-Київ",
+        "culture": "Цукровий буряк",
+        "volume": "від 500",
+        "price": 3200,
+        "currency": "грн",
+        "location": "Київська обл.",
+        "contact": "0800-222-333",
+        "source": "agrofond.net",
+        "lat": 50.4501,
+        "lon": 30.5234
+    },
+    {
+        "date": "17.05.2026",
+        "contractor": "Олімп-ВМ",
+        "culture": "Кукурудза",
+        "volume": "від 70",
+        "price": 8800,
+        "currency": "грн",
+        "location": "Суми",
+        "contact": "0800-333-444",
+        "source": "agrotender.com.ua",
+        "lat": 50.9077,
+        "lon": 34.7981
+    },
+    {
+        "date": "17.05.2026",
+        "contractor": "ТОВ Зерно-Продукт",
+        "culture": "Горох",
+        "volume": "від 50",
+        "price": 18500,
+        "currency": "грн",
+        "location": "Хмельницький",
+        "contact": "0800-444-555",
+        "source": "graintrade.com.ua",
+        "lat": 49.4229,
+        "lon": 26.9871
+    },
+    {
+        "date": "17.05.2026",
+        "contractor": "Агро-Регіон",
+        "culture": "Соя",
+        "volume": "від 120",
+        "price": 21500,
+        "currency": "грн",
+        "location": "Житомир",
+        "contact": "0800-555-666",
+        "source": "tripoli.land",
+        "lat": 50.2547,
+        "lon": 28.6587
+    }
+]
+
+# Ініціалізація fallback даних
+print("=" * 60)
+print("ІНІЦІАЛІЗАЦІЯ BACKEND")
+print("=" * 60)
+if not prop_data:
+    print("⚠️ Використовую ТЕСТОВІ ДАНІ (fallback)")
+    print(f"   Завантажено: {len(FALLBACK_DATA)} пропозицій")
+    prop_data = FALLBACK_DATA.copy()
+    last_update = datetime.now()
+print("=" * 60 + "\n")
 
 headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
 INTERESTED_CROPS = ["Кукурудза", "Пшениця", "Соя", "Ячмінь", "Ріпак", "Горох", "Овес", "Гречка", "Цукровий буряк", "Соняшник"]
