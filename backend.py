@@ -949,6 +949,7 @@ def calculate_profit(offer, user_lat, user_lon, user_volume, vehicles):
     
     if currency == 'дол':
         price_uah = price * usd_rate
+        print(f"  Конвертація: {price} USD x {usd_rate} = {price_uah:.2f} грн")
     else:
         price_uah = price
     
@@ -976,25 +977,14 @@ def calculate_profit(offer, user_lat, user_lon, user_volume, vehicles):
     
     offer['logistics_cost'] = round(best_cost, 2)
     
-    price = offer.get('price', 0)
-    currency = offer.get('currency', 'грн')
-    
-    if currency == 'дол':
-        price_uah = price * usd_rate
-        print(f"  Конвертація: {price} USD x {usd_rate} = {price_uah:.2f} грн")
-    else:
-        price_uah = price
-    
-    income = user_volume * price_uah
+    # Використовуємо вже розрахований income
     logistics_cost = best_cost
     
     # Додаємо поля для відображення в таблиці
-    offer['income'] = round(income, 2)
     offer['logistics'] = round(logistics_cost, 2)
     
     profit = income - logistics_cost
     offer['profit'] = round(profit, 2)
-    offer['price_uah'] = round(price_uah, 2)
     
     return offer
 
