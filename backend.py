@@ -266,6 +266,8 @@ print("=" * 60)
 
 # Спроба підключитися до БД
 db = None
+db_loaded = False
+
 if USE_DATABASE and os.environ.get('DATABASE_URL'):
     try:
         db = Database()
@@ -276,28 +278,25 @@ if USE_DATABASE and os.environ.get('DATABASE_URL'):
             if db_proposals:
                 prop_data = db_proposals
                 last_update = datetime.now()
+                db_loaded = True
                 print(f"✓ Завантажено з PostgreSQL: {len(prop_data)} пропозицій")
-            else:
-                print("⚠️ БД порожня, використовую ТЕСТОВІ ДАНІ")
-                prop_data = FALLBACK_DATA.copy()
-                last_update = datetime.now()
-                # Збережемо fallback дані в БД
-                db.save_proposals(prop_data)
-        else:
-            print("⚠️ Не вдалося підключитися до БД")
-            prop_data = FALLBACK_DATA.copy()
-            last_update = datetime.now()
     except Exception as e:
         print(f"⚠️ Помилка БД: {e}")
-        prop_data = FALLBACK_DATA.copy()
-        last_update = datetime.now()
-else:
-    # Fallback якщо немає БД
-    if not prop_data:
-        print("⚠️ Використовую ТЕСТОВІ ДАНІ (fallback)")
-        print(f"   Завантажено: {len(FALLBACK_DATA)} пропозицій")
-        prop_data = FALLBACK_DATA.copy()
-        last_update = datetime.now()
+
+# Fallback якщо БД недоступна або порожня
+if not db_loaded:
+    print("⚠️ Використовую ТЕСТОВІ ДАНІ (fallback)")
+    print(f"   Завантажено: {len(FALLBACK_DATA)} пропозицій")
+    prop_data = FALLBACK_DATA.copy()
+    last_update = datetime.now()
+    
+    # Спроба зберегти fallback дані в БД
+    if db:
+        try:
+            db.save_proposals(prop_data)
+            print("   ✓ Fallback дані збережено в PostgreSQL")
+        except Exception as e:
+            print(f"   ✗ Не вдалося зберегти в БД: {e}")
 
 print("=" * 60 + "\n")
 
