@@ -1051,6 +1051,17 @@ def index():
 
 @app.route('/api/proposals', methods=['GET'])
 def get_proposals():
+    global prop_data, last_update
+    
+    # LAZY LOADING: парсинг тільки при першому запиті
+    if not prop_data:
+        print("\n🔄 Перший запит - запуск парсингу...")
+        try:
+            parse_all_proposals()
+            print(f"✓ Парсинг завершено: {len(prop_data)} пропозицій\n")
+        except Exception as e:
+            print(f"✗ Помилка парсингу: {e}\n")
+    
     culture = request.args.get('culture', '')
     
     filtered = [p for p in prop_data if culture.lower() in p['culture'].lower()] if culture else []
@@ -1066,6 +1077,17 @@ def get_proposals():
 
 @app.route('/api/statistics', methods=['GET'])
 def get_statistics():
+    global prop_data
+    
+    # LAZY LOADING: парсинг тільки при першому запиті
+    if not prop_data:
+        print("\n🔄 Статистика: запуск парсингу...")
+        try:
+            parse_all_proposals()
+            print(f"✓ Парсинг завершено: {len(prop_data)} пропозицій\n")
+        except Exception as e:
+            print(f"✗ Помилка парсингу: {e}\n")
+    
     culture = request.args.get('culture', '')
     
     if not culture:
@@ -1200,14 +1222,21 @@ if __name__ == '__main__':
     print("ЗЕРНОВА ТОРГОВА ПЛАТФОРМА - БЕКЕНД З OSM")
     print("=" * 60)
     
+    print("\n⚡ LAZY LOADING УВІМКНЕНО")
+    print("  Парсинг виконається автоматично при першому запиті")
+    print("  Це прискорює старт сервера на Render")
+    
     print("\nЗавантаження збережених даних...")
     load_data_from_files()
     
-    if not prop_data:
-        print("\nПочатковий парсинг...")
-        parse_all_proposals()
+    # НЕ запускаємо парсинг при старті - він запуститься при першому запиті
+    if prop_data:
+        print(f"✓ Завантажено з файлу: {len(prop_data)} пропозицій")
+    else:
+        print("  Файл порожній - парсинг запуститься при першому запиті API")
     
-    start_background_parsing()
+    # Фоновий парсинг тільки для локального запуску
+    # start_background_parsing()  # Вимкнено для Render
     
     print("\n" + "=" * 60)
     print("Сервер запущено: http://localhost:5000")
