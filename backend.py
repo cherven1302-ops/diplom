@@ -300,42 +300,6 @@ if not db_loaded:
 
 print("=" * 60 + "\n")
 
-# === АВТОМАТИЧНИЙ ПАРСИНГ ПРИ СТАРТІ ===
-# Завжди пробуємо парсинг (якщо дані з fallback)
-print("🔄 Запуск автоматичного парсингу...")
-try:
-    # Зберегти fallback на випадок помилки
-    fallback_backup = prop_data.copy()
-    
-    # Парсинг без timeout - хай працює скільки треба
-    parse_all_proposals()
-    
-    if prop_data and len(prop_data) > len(fallback_backup):
-        print(f"✓ Парсинг успішний: {len(prop_data)} пропозицій")
-        last_update = datetime.now()
-        
-        # Зберегти в БД якщо доступна
-        if db:
-            try:
-                db.save_proposals(prop_data)
-                print("✓ Реальні дані збережено в PostgreSQL")
-            except:
-                pass
-    else:
-        print("⚠️ Парсинг не дав результатів, використовую fallback")
-        prop_data = fallback_backup
-        
-except Exception as e:
-    print(f"⚠️ Помилка парсингу: {e}")
-    import traceback
-    traceback.print_exc()
-    print("   Використовую fallback дані")
-    prop_data = fallback_backup
-
-print("=" * 60)
-print(f"📊 ГОТОВО: {len(prop_data)} пропозицій в пам'яті")
-print("=" * 60 + "\n")
-
 headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
 INTERESTED_CROPS = ["Кукурудза", "Пшениця", "Соя", "Ячмінь", "Ріпак", "Горох", "Овес", "Гречка", "Цукровий буряк", "Соняшник"]
 
@@ -1511,6 +1475,46 @@ def force_update():
         "info_count": len(info_data),
         "last_update": last_update.strftime("%d.%m.%Y %H:%M") if last_update else "Немає даних"
     })
+
+
+# === АВТОМАТИЧНИЙ ПАРСИНГ ПРИ СТАРТІ ===
+# Виконується ПІСЛЯ визначення всіх функцій, ДО if __name__
+print("\n" + "=" * 60)
+print("🔄 Запуск автоматичного парсингу...")
+print("=" * 60)
+
+try:
+    # Зберегти fallback на випадок помилки
+    fallback_backup = prop_data.copy()
+    
+    # Парсинг без timeout - хай працює скільки треба
+    parse_all_proposals()
+    
+    if prop_data and len(prop_data) > len(fallback_backup):
+        print(f"✓ Парсинг успішний: {len(prop_data)} пропозицій")
+        last_update = datetime.now()
+        
+        # Зберегти в БД якщо доступна
+        if db:
+            try:
+                db.save_proposals(prop_data)
+                print("✓ Реальні дані збережено в PostgreSQL")
+            except:
+                pass
+    else:
+        print("⚠️ Парсинг не дав результатів, використовую fallback")
+        prop_data = fallback_backup
+        
+except Exception as e:
+    print(f"⚠️ Помилка парсингу: {e}")
+    import traceback
+    traceback.print_exc()
+    print("   Використовую fallback дані")
+    prop_data = fallback_backup
+
+print("=" * 60)
+print(f"📊 ГОТОВО: {len(prop_data)} пропозицій в пам'яті")
+print("=" * 60 + "\n")
 
 
 if __name__ == '__main__':
