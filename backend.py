@@ -300,6 +300,58 @@ if not db_loaded:
 
 print("=" * 60 + "\n")
 
+# === СПРОБА ПАРСИНГУ ПРИ СТАРТІ (як в оригіналі) ===
+# Якщо fallback дані, спробувати реальний парсинг
+if not db_loaded and len(prop_data) == len(FALLBACK_DATA):
+    print("🔄 Спроба реального парсингу...")
+    try:
+        # Зберегти fallback на випадок помилки
+        fallback_backup = prop_data.copy()
+        
+        # Спроба парсингу (з timeout)
+        import signal
+        
+        def timeout_handler(signum, frame):
+            raise TimeoutError("Парсинг перевищив ліміт часу")
+        
+        # Встановлюємо timeout 25 секунд (Render дає 30)
+        signal.signal(signal.SIGALRM, timeout_handler)
+        signal.alarm(25)
+        
+        try:
+            parse_all_proposals()
+            signal.alarm(0)  # Скасувати timeout
+            
+            if prop_data and len(prop_data) > len(FALLBACK_DATA):
+                print(f"✓ Парсинг успішний: {len(prop_data)} пропозицій")
+                last_update = datetime.now()
+                
+                # Зберегти в БД якщо доступна
+                if db:
+                    try:
+                        db.save_proposals(prop_data)
+                        print("✓ Реальні дані збережено в PostgreSQL")
+                    except:
+                        pass
+            else:
+                print("⚠️ Парсинг не дав результатів, використовую fallback")
+                prop_data = fallback_backup
+        except TimeoutError:
+            signal.alarm(0)
+            print("⚠️ Парсинг перевищив 25 сек, використовую fallback")
+            prop_data = fallback_backup
+        except Exception as e:
+            signal.alarm(0)
+            print(f"⚠️ Помилка парсингу: {e}, використовую fallback")
+            prop_data = fallback_backup
+            
+    except Exception as e:
+        print(f"⚠️ Не вдалося запустити парсинг: {e}")
+
+print("=" * 60)
+print(f"📊 ГОТОВО: {len(prop_data)} пропозицій в пам'яті")
+print("=" * 60 + "\n")
+
 headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
 INTERESTED_CROPS = ["Кукурудза", "Пшениця", "Соя", "Ячмінь", "Ріпак", "Горох", "Овес", "Гречка", "Цукровий буряк", "Соняшник"]
 
