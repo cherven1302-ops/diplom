@@ -300,35 +300,37 @@ if not db_loaded:
 
 print("=" * 60 + "\n")
 
-# === СПРОБА ПАРСИНГУ ПРИ СТАРТІ ===
-# Якщо fallback дані, спробувати реальний парсинг
-if not db_loaded and len(prop_data) == len(FALLBACK_DATA):
-    print("🔄 Спроба реального парсингу (без ліміту часу)...")
-    try:
-        # Зберегти fallback на випадок помилки
-        fallback_backup = prop_data.copy()
+# === АВТОМАТИЧНИЙ ПАРСИНГ ПРИ СТАРТІ ===
+# Завжди пробуємо парсинг (якщо дані з fallback)
+print("🔄 Запуск автоматичного парсингу...")
+try:
+    # Зберегти fallback на випадок помилки
+    fallback_backup = prop_data.copy()
+    
+    # Парсинг без timeout - хай працює скільки треба
+    parse_all_proposals()
+    
+    if prop_data and len(prop_data) > len(fallback_backup):
+        print(f"✓ Парсинг успішний: {len(prop_data)} пропозицій")
+        last_update = datetime.now()
         
-        # Парсинг без timeout - хай працює скільки треба
-        parse_all_proposals()
-        
-        if prop_data and len(prop_data) > len(FALLBACK_DATA):
-            print(f"✓ Парсинг успішний: {len(prop_data)} пропозицій")
-            last_update = datetime.now()
-            
-            # Зберегти в БД якщо доступна
-            if db:
-                try:
-                    db.save_proposals(prop_data)
-                    print("✓ Реальні дані збережено в PostgreSQL")
-                except:
-                    pass
-        else:
-            print("⚠️ Парсинг не дав результатів, використовую fallback")
-            prop_data = fallback_backup
-            
-    except Exception as e:
-        print(f"⚠️ Помилка парсингу: {e}, використовую fallback")
+        # Зберегти в БД якщо доступна
+        if db:
+            try:
+                db.save_proposals(prop_data)
+                print("✓ Реальні дані збережено в PostgreSQL")
+            except:
+                pass
+    else:
+        print("⚠️ Парсинг не дав результатів, використовую fallback")
         prop_data = fallback_backup
+        
+except Exception as e:
+    print(f"⚠️ Помилка парсингу: {e}")
+    import traceback
+    traceback.print_exc()
+    print("   Використовую fallback дані")
+    prop_data = fallback_backup
 
 print("=" * 60)
 print(f"📊 ГОТОВО: {len(prop_data)} пропозицій в пам'яті")
