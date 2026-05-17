@@ -912,9 +912,23 @@ def calculate_profit(offer, user_lat, user_lon, user_volume, vehicles):
         offer_lat, offer_lon = geocode_location(offer_location)
     
     if not offer_lat or not offer_lon:
-        offer['distance'] = None
-        offer['logistics_cost'] = None
-        offer['profit'] = None
+        # Рахуємо дохід навіть без координат
+        price = offer.get('price', 0)
+        currency = offer.get('currency', 'грн')
+        
+        if currency == 'дол':
+            price_uah = price * usd_rate
+        else:
+            price_uah = price
+        
+        income = user_volume * price_uah
+        
+        offer['distance'] = 0
+        offer['income'] = round(income, 2)
+        offer['logistics'] = 0
+        offer['logistics_cost'] = 0
+        offer['profit'] = round(income, 2)
+        offer['price_uah'] = round(price_uah, 2)
         return offer
     
     print(f"\nРозрахунок для пропозиції: {offer['culture']} в {offer_location}")
@@ -929,9 +943,23 @@ def calculate_profit(offer, user_lat, user_lon, user_volume, vehicles):
     
     offer['distance'] = round(distance, 2)
     
+    # Розраховуємо дохід
+    price = offer.get('price', 0)
+    currency = offer.get('currency', 'грн')
+    
+    if currency == 'дол':
+        price_uah = price * usd_rate
+    else:
+        price_uah = price
+    
+    income = user_volume * price_uah
+    offer['income'] = round(income, 2)
+    offer['price_uah'] = round(price_uah, 2)
+    
     if not vehicles:
+        offer['logistics'] = 0
         offer['logistics_cost'] = 0
-        offer['profit'] = 0
+        offer['profit'] = round(income, 2)
         return offer
     
     best_cost = float('inf')
@@ -959,6 +987,10 @@ def calculate_profit(offer, user_lat, user_lon, user_volume, vehicles):
     
     income = user_volume * price_uah
     logistics_cost = best_cost
+    
+    # Додаємо поля для відображення в таблиці
+    offer['income'] = round(income, 2)
+    offer['logistics'] = round(logistics_cost, 2)
     
     profit = income - logistics_cost
     offer['profit'] = round(profit, 2)
