@@ -682,44 +682,13 @@
             
             if (stats.info && stats.info.prices && stats.info.prices.length > 0) {
                 html += `
-                    <div class="info-section" style="margin-top: 20px;">
-                        <h4>Дані з UkrAgroConsult:</h4>
-                        <div class="info-text">
-                            Мін: ${stats.info.min.toFixed(2)} грн | 
-                            Макс: ${stats.info.max.toFixed(2)} грн | 
-                            Середнє: ${stats.info.avg.toFixed(2)} грн
-                        </div>
+                    <div class="info-text">
+                        <strong>Дані з UkrAgroConsult:</strong><br>
+                        Мін: ${stats.info.min.toFixed(2)} | 
+                        Макс: ${stats.info.max.toFixed(2)} | 
+                        Середнє: ${stats.info.avg.toFixed(2)}
+                    </div>
                 `;
-                
-                // Таблиця з датами та цінами
-                if (stats.info.dates && stats.info.dates.length > 0) {
-                    html += `
-                        <table style="margin-top: 10px; width: 100%;">
-                            <thead>
-                                <tr>
-                                    <th>Дата</th>
-                                    <th>Ціна (грн)</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                    `;
-                    
-                    for (let i = 0; i < Math.min(stats.info.dates.length, stats.info.prices.length); i++) {
-                        html += `
-                            <tr>
-                                <td>${stats.info.dates[i]}</td>
-                                <td>${stats.info.prices[i].toFixed(2)}</td>
-                            </tr>
-                        `;
-                    }
-                    
-                    html += `
-                            </tbody>
-                        </table>
-                    `;
-                }
-                
-                html += `</div>`;
             }
             
             document.getElementById('statistics-content').innerHTML = html;
@@ -731,26 +700,27 @@
             if (userProposals && userProposals.length > 0) {
                 html += '<h3>Ваші пропозиції:</h3>';
                 html += '<table><thead><tr>';
-                // Приховуємо дату і локацію для власних пропозицій
                 html += '<th>Контрагент</th><th>Культура</th><th>Обсяг</th>';
-                html += '<th>Ціна</th><th>Відстань (км)</th>';
-                html += '<th>Дохід (грн)</th><th>Логістика (грн)</th><th>Прибуток (грн)</th>';
+                html += '<th>Ціна</th><th>Відстань (км)</th><th>Прибуток (грн)</th>';
                 html += '</tr></thead><tbody>';
                 
                 userProposals.forEach(p => {
                     const profitClass = p.profit >= 0 ? 'profit-positive' : 'profit-negative';
-                    const income = p.income || 0;
-                    const logistics = p.logistics || 0;
-                    const logisticsText = logistics > 0 ? logistics.toFixed(2) : '(без логістики)';
+                    const currency = p.currency || 'грн';
+                    let priceDisplay;
+                    
+                    if (currency === 'дол' && p.price_uah) {
+                        priceDisplay = `${p.price} дол (${p.price_uah.toFixed(0)} грн)`;
+                    } else {
+                        priceDisplay = `${p.price} ${currency}`;
+                    }
                     
                     html += `<tr class="user-offer-row">`;
                     html += `<td><strong>${p.contractor}</strong></td>`;
                     html += `<td>${p.culture}</td>`;
                     html += `<td>${p.volume}</td>`;
-                    html += `<td>${p.price}</td>`;
+                    html += `<td>${priceDisplay}</td>`;
                     html += `<td>${p.distance}</td>`;
-                    html += `<td>${income.toFixed(2)}</td>`;
-                    html += `<td>${logisticsText}</td>`;
                     html += `<td class="${profitClass}">${p.profit}</td>`;
                     html += `</tr>`;
                 });
@@ -764,26 +734,28 @@
             } else {
                 html += '<table><thead><tr>';
                 html += '<th>Дата</th><th>Контрагент</th><th>Культура</th><th>Обсяг</th>';
-                html += '<th>Ціна</th><th>Локація</th><th>Відстань (км)</th>';
-                html += '<th>Дохід (грн)</th><th>Логістика (грн)</th><th>Прибуток (грн)</th><th>Джерело</th>';
+                html += '<th>Ціна</th><th>Локація</th><th>Відстань (км)</th><th>Прибуток (грн)</th><th>Джерело</th>';
                 html += '</tr></thead><tbody>';
                 
                 proposals.forEach(p => {
                     const profitClass = p.profit >= 0 ? 'profit-positive' : 'profit-negative';
-                    const income = p.income || 0;
-                    const logistics = p.logistics || 0;
-                    const logisticsText = logistics > 0 ? logistics.toFixed(2) : '(без логістики)';
+                    const currency = p.currency || 'грн';
+                    let priceDisplay;
+                    
+                    if (currency === 'дол' && p.price_uah) {
+                        priceDisplay = `${p.price} дол (${p.price_uah.toFixed(0)} грн)`;
+                    } else {
+                        priceDisplay = `${p.price} ${currency}`;
+                    }
                     
                     html += `<tr>`;
                     html += `<td>${p.date}</td>`;
                     html += `<td>${p.contractor}</td>`;
                     html += `<td>${p.culture}</td>`;
                     html += `<td>${p.volume || '-'}</td>`;
-                    html += `<td>${p.price}</td>`;
+                    html += `<td>${priceDisplay}</td>`;
                     html += `<td>${p.location || '-'}</td>`;
                     html += `<td>${p.distance}</td>`;
-                    html += `<td>${income.toFixed(2)}</td>`;
-                    html += `<td>${logisticsText}</td>`;
                     html += `<td class="${profitClass}">${p.profit}</td>`;
                     html += `<td><small>${p.source}</small></td>`;
                     html += `</tr>`;
