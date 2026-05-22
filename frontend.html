@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Зернова торгова платформа</title>
+    <title>Фермерський калькулятор</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         * {
@@ -256,11 +256,23 @@
             padding: 40px;
             color: #999;
         }
-    </style>
+
+        table a {
+            color: #2c5f2d;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        
+        table a:hover {
+            color: #1e4620;
+            text-decoration: underline;
+        }
+            </style>
 </head>
 <body>
     <div class="container">
-        <h1>Зернова торгова платформа</h1>
+        <h1>Фермерський калькулятор</h1>
         
         <!-- БЛОК 1: Введення даних -->
         <div class="block">
@@ -375,10 +387,7 @@
     
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // API URL - порожній рядок означає той самий домен
-        const API_URL = window.location.hostname === 'localhost' 
-            ? 'http://localhost:5000'  // Для локальної розробки
-            : '';  // Для production на Render
+        const API_URL = 'http://localhost:5000';
         
         let map, marker;
         let offerMap, offerMarker;
@@ -683,16 +692,6 @@
                 </div>
             `;
             
-            if (stats.info && stats.info.prices && stats.info.prices.length > 0) {
-                html += `
-                    <div class="info-text">
-                        <strong>Дані з UkrAgroConsult:</strong><br>
-                        Мін: ${stats.info.min.toFixed(2)} | 
-                        Макс: ${stats.info.max.toFixed(2)} | 
-                        Середнє: ${stats.info.avg.toFixed(2)}
-                    </div>
-                `;
-            }
             
             document.getElementById('statistics-content').innerHTML = html;
         }
@@ -760,7 +759,9 @@
                     html += `<td>${p.location || '-'}</td>`;
                     html += `<td>${p.distance}</td>`;
                     html += `<td class="${profitClass}">${p.profit}</td>`;
-                    html += `<td><small>${p.source}</small></td>`;
+                    // Джерело як клікабельне посилання
+                    const sourceLink = p.contact ? `<a href="${p.contact}" target="_blank" style="color: #2c5f2d; text-decoration: none;">${p.source} 🔗</a>` : p.source;
+                    html += `<td><small>${sourceLink}</small></td>`;
                     html += `</tr>`;
                 });
                 

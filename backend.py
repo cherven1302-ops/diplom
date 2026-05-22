@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Бекенд для зернової торгової платформи
-Flask API + парсинг даних + OSM геокодування + PostgreSQL
-"""
 
 from flask import Flask, render_template, jsonify, request, send_from_directory
 from flask_cors import CORS
@@ -18,22 +14,16 @@ import json
 import os
 from collections import defaultdict
 
-# PostgreSQL
-try:
-    from database import Database
-    USE_DATABASE = True
-    print("✓ Database модуль імпортовано")
-except ImportError:
-    USE_DATABASE = False
-    print("⚠️ Database модуль недоступний, використовую пам'ять")
-
 app = Flask(__name__, static_folder='.')
 CORS(app)
 
 usd_rate = 41.0
 
 def get_usd_rate():
-    """Отримує курс USD/UAH з API ПриватБанку"""
+    """
+    Отримує поточний курс USD/UAH з API ПриватБанку
+    Вихід: float - курс долара (sale)
+    """
     global usd_rate
     
     url = "https://api.privatbank.ua/p24api/pubinfo?exchange&json&coursid=11"
@@ -52,253 +42,11 @@ def get_usd_rate():
 
 get_usd_rate()
 
-# === ГЛОБАЛЬНІ ЗМІННІ ===
 prop_data = []
 info_data = {}
 last_update = None
 user_offers = []
 geocache = {}
-
-# === HARDCODED ТЕСТОВІ ДАНІ (FALLBACK) ===
-# Використовуються якщо парсинг не спрацював
-FALLBACK_DATA = [
-    {
-        "date": "17.05.2026",
-        "contractor": "Кернел",
-        "culture": "Пшениця",
-        "volume": "від 100",
-        "price": 9500,
-        "currency": "грн",
-        "location": "Київ",
-        "contact": "0800-123-456",
-        "source": "tripoli.land",
-        "lat": 50.4501,
-        "lon": 30.5234
-    },
-    {
-        "date": "17.05.2026",
-        "contractor": "МХП",
-        "culture": "Кукурудза",
-        "volume": "від 50",
-        "price": 8700,
-        "currency": "грн",
-        "location": "Вінниця",
-        "contact": "0800-234-567",
-        "source": "tripoli.land",
-        "lat": 49.2331,
-        "lon": 28.4682
-    },
-    {
-        "date": "17.05.2026",
-        "contractor": "Нібулон",
-        "culture": "Соняшник",
-        "volume": "від 200",
-        "price": 28000,
-        "currency": "грн",
-        "location": "Миколаїв",
-        "contact": "0800-345-678",
-        "source": "tripoli.land",
-        "lat": 46.9659,
-        "lon": 31.9974
-    },
-    {
-        "date": "17.05.2026",
-        "contractor": "Каргілл",
-        "culture": "Пшениця",
-        "volume": "від 150",
-        "price": 9800,
-        "currency": "грн",
-        "location": "Дніпро",
-        "contact": "0800-456-789",
-        "source": "agrofond.net",
-        "lat": 48.4647,
-        "lon": 35.0462
-    },
-    {
-        "date": "17.05.2026",
-        "contractor": "UKRLANDFARMING",
-        "culture": "Соя",
-        "volume": "від 100",
-        "price": 22000,
-        "currency": "грн",
-        "location": "Полтава",
-        "contact": "0800-567-890",
-        "source": "agrotender.com.ua",
-        "lat": 49.5883,
-        "lon": 34.5514
-    },
-    {
-        "date": "17.05.2026",
-        "contractor": "АДМ Україна",
-        "culture": "Кукурудза",
-        "volume": "від 80",
-        "price": 8900,
-        "currency": "грн",
-        "location": "Черкаси",
-        "contact": "0800-678-901",
-        "source": "graintrade.com.ua",
-        "lat": 49.4285,
-        "lon": 32.0617
-    },
-    {
-        "date": "17.05.2026",
-        "contractor": "Bunge",
-        "culture": "Ріпак",
-        "volume": "від 120",
-        "price": 24500,
-        "currency": "грн",
-        "location": "Одеса",
-        "contact": "0800-789-012",
-        "source": "tripoli.land",
-        "lat": 46.4825,
-        "lon": 30.7233
-    },
-    {
-        "date": "17.05.2026",
-        "contractor": "Glencore",
-        "culture": "Пшениця",
-        "volume": "від 200",
-        "price": 9600,
-        "currency": "грн",
-        "location": "Харків",
-        "contact": "0800-890-123",
-        "source": "agrofond.net",
-        "lat": 49.9935,
-        "lon": 36.2304
-    },
-    {
-        "date": "17.05.2026",
-        "contractor": "ТОВ Агро-Трейд",
-        "culture": "Ячмінь",
-        "volume": "від 60",
-        "price": 7800,
-        "currency": "грн",
-        "location": "Запоріжжя",
-        "contact": "0800-901-234",
-        "source": "agrotender.com.ua",
-        "lat": 47.8388,
-        "lon": 35.1396
-    },
-    {
-        "date": "17.05.2026",
-        "contractor": "Луї Дрейфус",
-        "culture": "Соняшник",
-        "volume": "від 150",
-        "price": 29000,
-        "currency": "грн",
-        "location": "Кропивницький",
-        "contact": "0800-012-345",
-        "source": "graintrade.com.ua",
-        "lat": 48.5079,
-        "lon": 32.2623
-    },
-    {
-        "date": "17.05.2026",
-        "contractor": "Агропросперіс",
-        "culture": "Пшениця",
-        "volume": "від 100",
-        "price": 9700,
-        "currency": "грн",
-        "location": "Чернігів",
-        "contact": "0800-111-222",
-        "source": "tripoli.land",
-        "lat": 51.4982,
-        "lon": 31.2893
-    },
-    {
-        "date": "17.05.2026",
-        "contractor": "Астарта-Київ",
-        "culture": "Цукровий буряк",
-        "volume": "від 500",
-        "price": 3200,
-        "currency": "грн",
-        "location": "Київська обл.",
-        "contact": "0800-222-333",
-        "source": "agrofond.net",
-        "lat": 50.4501,
-        "lon": 30.5234
-    },
-    {
-        "date": "17.05.2026",
-        "contractor": "Олімп-ВМ",
-        "culture": "Кукурудза",
-        "volume": "від 70",
-        "price": 8800,
-        "currency": "грн",
-        "location": "Суми",
-        "contact": "0800-333-444",
-        "source": "agrotender.com.ua",
-        "lat": 50.9077,
-        "lon": 34.7981
-    },
-    {
-        "date": "17.05.2026",
-        "contractor": "ТОВ Зерно-Продукт",
-        "culture": "Горох",
-        "volume": "від 50",
-        "price": 18500,
-        "currency": "грн",
-        "location": "Хмельницький",
-        "contact": "0800-444-555",
-        "source": "graintrade.com.ua",
-        "lat": 49.4229,
-        "lon": 26.9871
-    },
-    {
-        "date": "17.05.2026",
-        "contractor": "Агро-Регіон",
-        "culture": "Соя",
-        "volume": "від 120",
-        "price": 21500,
-        "currency": "грн",
-        "location": "Житомир",
-        "contact": "0800-555-666",
-        "source": "tripoli.land",
-        "lat": 50.2547,
-        "lon": 28.6587
-    }
-]
-
-# Ініціалізація fallback даних
-print("=" * 60)
-print("ІНІЦІАЛІЗАЦІЯ BACKEND")
-print("=" * 60)
-
-# Спроба підключитися до БД
-db = None
-db_loaded = False
-
-if USE_DATABASE and os.environ.get('DATABASE_URL'):
-    try:
-        db = Database()
-        if db.connect():
-            db.init_schema()
-            # Завантажити дані з БД
-            db_proposals = db.get_all_proposals()
-            if db_proposals:
-                prop_data = db_proposals
-                last_update = datetime.now()
-                db_loaded = True
-                print(f"✓ Завантажено з PostgreSQL: {len(prop_data)} пропозицій")
-    except Exception as e:
-        print(f"⚠️ Помилка БД: {e}")
-
-# Fallback якщо БД недоступна або порожня
-if not db_loaded:
-    print("⚠️ Використовую ТЕСТОВІ ДАНІ (fallback)")
-    print(f"   Завантажено: {len(FALLBACK_DATA)} пропозицій")
-    prop_data = FALLBACK_DATA.copy()
-    last_update = datetime.now()
-    
-    # Спроба зберегти fallback дані в БД
-    if db:
-        try:
-            db.save_proposals(prop_data)
-            print("   ✓ Fallback дані збережено в PostgreSQL")
-        except Exception as e:
-            print(f"   ✗ Не вдалося зберегти в БД: {e}")
-
-print("=" * 60 + "\n")
 
 headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
 INTERESTED_CROPS = ["Кукурудза", "Пшениця", "Соя", "Ячмінь", "Ріпак", "Горох", "Овес", "Гречка", "Цукровий буряк", "Соняшник"]
@@ -539,8 +287,9 @@ KNOWN_LOCATIONS = {
 
 def get_coordinates_osm(address):
     """
-    Шукає координати (lat, lon) за текстовою назвою локації через OpenStreetMap
-    Повертає: (lat, lon, display_name) або None
+    Пошук координат через OpenStreetMap Nominatim API
+    Вхід: address (str) - текстова назва локації
+    Вихід: tuple (lat, lon, short_name) або None якщо не знайдено
     """
     url = "https://nominatim.openstreetmap.org/search"
     osm_headers = {
@@ -558,7 +307,6 @@ def get_coordinates_osm(address):
             lat = float(response[0]['lat'])
             lon = float(response[0]['lon'])
             display_name = response[0].get('display_name', address)
-            # Повертаємо координати та коротку назву
             short_name = ", ".join(display_name.split(",")[:2])
             print(f"  ✓ OSM знайшов '{address}': {lat}, {lon}")
             return lat, lon, short_name
@@ -570,8 +318,9 @@ def get_coordinates_osm(address):
 
 def get_road_distance_osrm(lat1, lon1, lat2, lon2):
     """
-    Рахує реальну відстань та час між двома координатами по дорогах через OSRM
-    Повертає: (distance_km, duration_min) або None
+    Розрахунок реальної відстані та часу по дорогах через OSRM API
+    Вхід: lat1, lon1, lat2, lon2 (float) - координати двох точок
+    Вихід: tuple (distance_km, duration_min) або None якщо помилка
     """
     url = f"http://router.project-osrm.org/route/v1/driving/{lon1},{lat1};{lon2},{lat2}?overview=false"
     
@@ -579,8 +328,8 @@ def get_road_distance_osrm(lat1, lon1, lat2, lon2):
         response = requests.get(url, timeout=10).json()
         if response['code'] == 'Ok':
             route = response['routes'][0]
-            distance_km = route['distance'] / 1000  # Переводимо метри в км
-            duration_min = route['duration'] / 60   # Переводимо секунди в хвилини
+            distance_km = route['distance'] / 1000
+            duration_min = route['duration'] / 60
             print(f"  ✓ OSRM розрахував відстань: {distance_km:.2f} км, {duration_min:.0f} хв")
             return distance_km, duration_min
     except Exception as e:
@@ -591,10 +340,9 @@ def get_road_distance_osrm(lat1, lon1, lat2, lon2):
 
 def geocode_location(location):
     """
-    Визначає координати локації з пріоритетом OSM
-    1. Спочатку пробує OSM
-    2. Якщо не вдалося, шукає в KNOWN_LOCATIONS з нормалізацією
-    Повертає: (lat, lon) або (None, None)
+    Визначає координати локації: спочатку через OSM, потім через KNOWN_LOCATIONS
+    Вхід: location (str) - назва локації
+    Вихід: tuple (lat, lon) або (None, None) якщо не знайдено
     """
     if not location:
         return None, None
@@ -653,8 +401,9 @@ def geocode_location(location):
 
 def haversine(lat1, lon1, lat2, lon2):
     """
-    Розрахунок відстані по прямій (формула гаверсинусів)
-    Використовується тільки як резервний варіант
+    Розрахунок відстані по прямій між двома координатами (формула гаверсинусів)
+    Вхід: lat1, lon1, lat2, lon2 (float) - координати двох точок
+    Вихід: float - відстань в кілометрах
     """
     R = 6371
     
@@ -670,7 +419,11 @@ def haversine(lat1, lon1, lat2, lon2):
 
 
 def normalize_location(location):
-    """Нормалізує назву локації для пошуку координат"""
+    """
+    Нормалізація назви локації для пошуку в словнику KNOWN_LOCATIONS
+    Вхід: location (str) - необроблена назва локації
+    Вихід: str - нормалізована назва або вихідна назва
+    """
     if not location:
         return None
     
@@ -730,7 +483,10 @@ def normalize_location(location):
 
 
 def parse_tripoli():
-    """Парсинг tripoli.land"""
+    """
+    Парсинг пропозицій з tripoli.land (Кернел, МХП, Нібулон, Агропросперіс, Гленпорт)
+    Вихід: list - список пропозицій
+    """
     print("Парсинг tripoli.land...")
     results = []
     traders = [
@@ -800,7 +556,10 @@ def parse_tripoli():
 
 
 def parse_agrofond():
-    """Парсинг agrofond.net"""
+    """
+    Парсинг пропозицій з agrofond.net
+    Вихід: list - список пропозицій
+    """
     print("Парсинг agrofond.net...")
     url = "https://agrofond.net/zakupovujemo"
     results = []
@@ -872,7 +631,10 @@ def parse_agrofond():
 
 
 def parse_agrotender():
-    """Парсинг agrotender.com.ua"""
+    """
+    Парсинг пропозицій з agrotender.com.ua
+    Вихід: list - список пропозицій
+    """
     print("Парсинг agrotender.com.ua...")
     url = "https://agrotender.com.ua/traders/region_ukraine"
     results = []
@@ -1037,7 +799,10 @@ def parse_agrotender():
 
 
 def parse_graintrade():
-    """Парсинг graintrade.com.ua"""
+    """
+    Парсинг пропозицій з graintrade.com.ua
+    Вихід: list - список пропозицій
+    """
     print("Парсинг graintrade.com.ua...")
     results = []
     
@@ -1104,7 +869,10 @@ def parse_graintrade():
 
 
 def parse_all_proposals():
-    """Парсинг всіх джерел"""
+    """
+    Парсинг всіх джерел, видалення дублікатів, збереження в prop_data
+    оновлює глобальну змінну prop_data
+    """
     global prop_data, last_update
     
     print("\nПарсинг пропозицій...")
@@ -1137,7 +905,6 @@ def parse_all_proposals():
     print(f"\nВсього зібрано: {len(all_results)} пропозицій")
     print(f"Після видалення дублікатів: {len(unique_results)} пропозицій")
     
-    # Збереження в CSV (fallback)
     try:
         import csv
         with open('prop_data.csv', 'w', newline='', encoding='utf-8-sig') as f:
@@ -1146,22 +913,20 @@ def parse_all_proposals():
                 writer = csv.DictWriter(f, fieldnames=fieldnames)
                 writer.writeheader()
                 writer.writerows(prop_data)
-        print("  ✓ Збережено у prop_data.csv")
+        print("  Збережено у prop_data.csv")
     except Exception as e:
-        print(f"  ✗ Помилка збереження CSV: {e}")
-    
-    # Збереження в PostgreSQL
-    if db:
-        try:
-            db.save_proposals(prop_data)
-            print("  ✓ Збережено в PostgreSQL")
-        except Exception as e:
-            print(f"  ✗ Помилка збереження в БД: {e}")
+        print(f"  Помилка збереження: {e}")
 
 
 def calculate_profit(offer, user_lat, user_lon, user_volume, vehicles):
     """
-    Розраховує прибуток з урахуванням логістики через OSRM
+    Розрахунок прибутку для пропозиції з урахуванням логістичних витрат
+    Вхід: 
+      - offer (dict) - пропозиція з ціною, локацією, культурою
+      - user_lat, user_lon (float) - координати користувача
+      - user_volume (float) - обсяг товару в тоннах
+      - vehicles (list) - список транспортних засобів [{capacity, rate}, ...]
+    Вихід: dict - оновлена пропозиція з полями distance, logistics_cost, profit, price_uah
     """
     offer_location = offer.get('location', '')
     
@@ -1172,23 +937,9 @@ def calculate_profit(offer, user_lat, user_lon, user_volume, vehicles):
         offer_lat, offer_lon = geocode_location(offer_location)
     
     if not offer_lat or not offer_lon:
-        # Рахуємо дохід навіть без координат
-        price = offer.get('price', 0)
-        currency = offer.get('currency', 'грн')
-        
-        if currency == 'дол':
-            price_uah = price * usd_rate
-        else:
-            price_uah = price
-        
-        income = user_volume * price_uah
-        
-        offer['distance'] = 0
-        offer['income'] = round(income, 2)
-        offer['logistics'] = 0
-        offer['logistics_cost'] = 0
-        offer['profit'] = round(income, 2)
-        offer['price_uah'] = round(price_uah, 2)
+        offer['distance'] = None
+        offer['logistics_cost'] = None
+        offer['profit'] = None
         return offer
     
     print(f"\nРозрахунок для пропозиції: {offer['culture']} в {offer_location}")
@@ -1203,24 +954,9 @@ def calculate_profit(offer, user_lat, user_lon, user_volume, vehicles):
     
     offer['distance'] = round(distance, 2)
     
-    # Розраховуємо дохід
-    price = offer.get('price', 0)
-    currency = offer.get('currency', 'грн')
-    
-    if currency == 'дол':
-        price_uah = price * usd_rate
-        print(f"  Конвертація: {price} USD x {usd_rate} = {price_uah:.2f} грн")
-    else:
-        price_uah = price
-    
-    income = user_volume * price_uah
-    offer['income'] = round(income, 2)
-    offer['price_uah'] = round(price_uah, 2)
-    
     if not vehicles:
-        offer['logistics'] = 0
         offer['logistics_cost'] = 0
-        offer['profit'] = round(income, 2)
+        offer['profit'] = 0
         return offer
     
     best_cost = float('inf')
@@ -1237,20 +973,29 @@ def calculate_profit(offer, user_lat, user_lon, user_volume, vehicles):
     
     offer['logistics_cost'] = round(best_cost, 2)
     
-    # Використовуємо вже розрахований income
-    logistics_cost = best_cost
+    price = offer.get('price', 0)
+    currency = offer.get('currency', 'грн')
     
-    # Додаємо поля для відображення в таблиці
-    offer['logistics'] = round(logistics_cost, 2)
+    if currency == 'дол':
+        price_uah = price * usd_rate
+        print(f"  Конвертація: {price} USD x {usd_rate} = {price_uah:.2f} грн")
+    else:
+        price_uah = price
+    
+    income = user_volume * price_uah
+    logistics_cost = best_cost
     
     profit = income - logistics_cost
     offer['profit'] = round(profit, 2)
+    offer['price_uah'] = round(price_uah, 2)
     
     return offer
 
 
 def load_data_from_files():
-    """Завантажує дані з файлів"""
+    """
+    Завантаження збережених даних з prop_data.csv та info_data.json
+    """
     global prop_data, info_data
     
     if os.path.exists("prop_data.csv"):
@@ -1287,7 +1032,9 @@ def load_data_from_files():
 
 
 def background_parsing():
-    """Парсинг кожні 24 години"""
+    """
+    Фоновий процес: оновлення курсу USD та парсинг всіх джерел кожні 24 години
+    """
     while True:
         try:
             get_usd_rate()
@@ -1300,6 +1047,9 @@ def background_parsing():
 
 
 def start_background_parsing():
+    """
+    Запуск фонового парсингу в окремому daemon потоці
+    """
     thread = threading.Thread(target=background_parsing, daemon=True)
     thread.start()
 
@@ -1311,17 +1061,6 @@ def index():
 
 @app.route('/api/proposals', methods=['GET'])
 def get_proposals():
-    global prop_data, last_update
-    
-    # LAZY LOADING: парсинг тільки при першому запиті
-    if not prop_data:
-        print("\n🔄 Перший запит - запуск парсингу...")
-        try:
-            parse_all_proposals()
-            print(f"✓ Парсинг завершено: {len(prop_data)} пропозицій\n")
-        except Exception as e:
-            print(f"✗ Помилка парсингу: {e}\n")
-    
     culture = request.args.get('culture', '')
     
     filtered = [p for p in prop_data if culture.lower() in p['culture'].lower()] if culture else []
@@ -1337,17 +1076,6 @@ def get_proposals():
 
 @app.route('/api/statistics', methods=['GET'])
 def get_statistics():
-    global prop_data
-    
-    # LAZY LOADING: парсинг тільки при першому запиті
-    if not prop_data:
-        print("\n🔄 Статистика: запуск парсингу...")
-        try:
-            parse_all_proposals()
-            print(f"✓ Парсинг завершено: {len(prop_data)} пропозицій\n")
-        except Exception as e:
-            print(f"✗ Помилка парсингу: {e}\n")
-    
     culture = request.args.get('culture', '')
     
     if not culture:
@@ -1420,7 +1148,7 @@ def calculate():
     user_filtered.sort(key=lambda x: x.get('profit', 0) if x.get('profit') is not None else float('-inf'), reverse=True)
     
     return jsonify({
-        "proposals": filtered[:100],
+        "proposals": filtered,
         "user_offers": user_filtered
     })
 
@@ -1477,75 +1205,22 @@ def force_update():
     })
 
 
-# === АВТОМАТИЧНИЙ ПАРСИНГ ПРИ СТАРТІ ===
-# Виконується ПІСЛЯ визначення всіх функцій, ДО if __name__
-print("\n" + "=" * 60)
-print("🔄 Запуск автоматичного парсингу...")
-print("=" * 60)
-
-try:
-    # Зберегти fallback на випадок помилки
-    fallback_backup = prop_data.copy()
-    
-    # Парсинг без timeout - хай працює скільки треба
-    parse_all_proposals()
-    
-    if prop_data and len(prop_data) > len(fallback_backup):
-        print(f"✓ Парсинг успішний: {len(prop_data)} пропозицій")
-        last_update = datetime.now()
-        
-        # Зберегти в БД якщо доступна
-        if db:
-            try:
-                db.save_proposals(prop_data)
-                print("✓ Реальні дані збережено в PostgreSQL")
-            except:
-                pass
-    else:
-        print("⚠️ Парсинг не дав результатів, використовую fallback")
-        prop_data = fallback_backup
-        
-except Exception as e:
-    print(f"⚠️ Помилка парсингу: {e}")
-    import traceback
-    traceback.print_exc()
-    print("   Використовую fallback дані")
-    prop_data = fallback_backup
-
-print("=" * 60)
-print(f"📊 ГОТОВО: {len(prop_data)} пропозицій в пам'яті")
-print("=" * 60 + "\n")
-
-
 if __name__ == '__main__':
     print("=" * 60)
-    print("ЗЕРНОВА ТОРГОВА ПЛАТФОРМА - БЕКЕНД З OSM")
+    print("ФЕРМЕРСЬКИЙ КАЛЬКУЛЯТОР ")
     print("=" * 60)
-    
-    print("\n⚡ LAZY LOADING УВІМКНЕНО")
-    print("  Парсинг виконається автоматично при першому запиті")
-    print("  Це прискорює старт сервера на Render")
     
     print("\nЗавантаження збережених даних...")
     load_data_from_files()
     
-    # НЕ запускаємо парсинг при старті - він запуститься при першому запиті
-    if prop_data:
-        print(f"✓ Завантажено з файлу: {len(prop_data)} пропозицій")
-    else:
-        print("  Файл порожній - парсинг запуститься при першому запиті API")
+    if not prop_data:
+        print("\nПочатковий парсинг...")
+        parse_all_proposals()
     
-    # Фоновий парсинг тільки для локального запуску
-    # start_background_parsing()  # Вимкнено для Render
+    start_background_parsing()
     
     print("\n" + "=" * 60)
     print("Сервер запущено: http://localhost:5000")
-    print("Фронтенд: frontend.html")
-    print("\nГеокодування та відстані через OpenStreetMap")
-    print("  Координати визначаються через OSM Nominatim")
-    print("  Відстані рахуються по дорогах через OSRM")
-    print("  Резервний словник для відомих локацій")
     print("=" * 60 + "\n")
     
-    port = int(os.environ.get('PORT', 5000))
-    app.run(debug=False, host='0.0.0.0', port=port, use_reloader=False)
+    app.run(debug=True, host='0.0.0.0', port=5000, use_reloader=False)
